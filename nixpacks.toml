@@ -1,0 +1,3 @@
+# NODE_ENV=production skips devDependencies by default; TypeScript build needs them.
+[phases.install]
+cmds = ["npm ci --include=dev"]
