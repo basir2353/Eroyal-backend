@@ -1,0 +1,481 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+  FREE_SHIPPING
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+}
+
+enum HomepageSectionType {
+  HERO
+  BENEFITS
+  GALLERY
+  STATISTICS
+  BANNER
+  CONTACT_CTA
+  ABOUT
+  CONTACT_PAGE
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  label       String
+  permissions RolePermission[]
+  users       User[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Permission {
+  id    String           @id @default(cuid())
+  name  String           @unique
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model User {
+  id                   String         @id @default(cuid())
+  name                 String
+  email                String         @unique
+  phone                String?
+  password             String
+  avatar               String?
+  roleId               String
+  role                 Role           @relation(fields: [roleId], references: [id])
+  status               UserStatus     @default(ACTIVE)
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  mediaUploads         MediaLibrary[]
+
+  @@index([email])
+  @@index([roleId])
+  @@map("users")
+}
+
+model Customer {
+  id            String     @id @default(cuid())
+  name          String
+  email         String     @unique
+  phone         String?
+  totalSpending Decimal    @default(0) @db.Decimal(12, 2)
+  isBlocked     Boolean    @default(false)
+  addresses     Address[]
+  orders        Order[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([email])
+  @@map("customers")
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  label      String?
+  address    String
+  city       String
+  state      String?
+  postcode   String?
+  country    String   @default("Pakistan")
+  isDefault  Boolean  @default(false)
+
+  @@index([customerId])
+  @@map("addresses")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  image       String?
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([slug])
+  @@map("categories")
+}
+
+model Product {
+  id                    String         @id @default(cuid())
+  name                  String
+  slug                  String         @unique
+  shortDescription      String         @default("")
+  fullDescription       String         @default("") @db.Text
+  sku                   String?        @unique
+  stock                 Int            @default(0)
+  regularPrice          Decimal        @db.Decimal(12, 2)
+  salePrice             Decimal?       @db.Decimal(12, 2)
+  featured              Boolean        @default(false)
+  mostLoved             Boolean        @default(false)
+  status                ProductStatus  @default(DRAFT)
+  categoryId            String
+  category              Category       @relation(fields: [categoryId], references: [id])
+  tags                  String[]       @default([])
+  onSale                Boolean        @default(false)
+  saleBadge             String?
+  discountPercent       Int?
+  offerStartDate        DateTime?
+  offerEndDate          DateTime?
+  reviewCount           Int            @default(0)
+  freeShipping          Boolean        @default(true)
+  action                String         @default("select")
+  descriptionTitle      String?
+  descriptionParagraphs String[]       @default([])
+  additionalInfo        Json?
+  weightOptions         Json?
+  gallery               String[]       @default([])
+  relatedProductIds     String[]       @default([])
+  images                ProductImage[]
+  orderItems            OrderItem[]
+  seo                   SeoSetting?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@index([slug])
+  @@index([status])
+  @@index([categoryId])
+  @@index([featured])
+  @@index([mostLoved])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  sortOrder Int     @default(0)
+  isPrimary Boolean @default(false)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model Order {
+  id             String          @id @default(cuid())
+  orderNumber    String          @unique
+  customerId     String
+  customer       Customer        @relation(fields: [customerId], references: [id])
+  subtotal       Decimal         @db.Decimal(12, 2)
+  shippingCost   Decimal         @default(0) @db.Decimal(12, 2)
+  tax            Decimal         @default(0) @db.Decimal(12, 2)
+  discount       Decimal         @default(0) @db.Decimal(12, 2)
+  total          Decimal         @db.Decimal(12, 2)
+  paymentMethod  String          @default("cash_on_delivery")
+  paymentStatus  PaymentStatus   @default(PENDING)
+  orderStatus    OrderStatus     @default(PENDING)
+  trackingNumber String?
+  couponCode     String?
+  notes          String?
+  customerInfo              Json
+  items                     OrderItem[]
+  timeline                  OrderTimeline[]
+  confirmationEmailSentAt   DateTime?
+  confirmationEmailError    String?
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+
+  @@index([orderNumber])
+  @@index([orderStatus])
+  @@index([customerId])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name      String
+  slug      String
+  image     String?
+  weight    String?
+  quantity  Int
+  unitPrice Decimal  @db.Decimal(12, 2)
+  lineTotal Decimal  @db.Decimal(12, 2)
+
+  @@index([orderId])
+  @@index([slug])
+  @@map("order_items")
+}
+
+model OrderTimeline {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  note      String?
+  createdAt DateTime    @default(now())
+
+  @@index([orderId])
+  @@map("order_timeline")
+}
+
+model Blog {
+  id            String        @id @default(cuid())
+  title         String
+  slug          String        @unique
+  excerpt       String        @default("")
+  content       String        @default("") @db.Text
+  featuredImage String?
+  categoryName  String        @default("General")
+  tags          String[]      @default([])
+  author        String        @default("E Royal Mango")
+  authorEmail   String?
+  status        ContentStatus @default(DRAFT)
+  publishedAt   DateTime?
+  seo           SeoSetting?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([slug])
+  @@index([status])
+  @@map("blogs")
+}
+
+model Testimonial {
+  id            String        @id @default(cuid())
+  customerName  String
+  customerImage String?
+  location      String?
+  rating        Int           @default(5)
+  review        String        @db.Text
+  status        ContentStatus @default(DRAFT)
+  sortOrder     Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([status])
+  @@map("testimonials")
+}
+
+model Faq {
+  id        String   @id @default(cuid())
+  category  String   @default("General")
+  question  String
+  answer    String   @db.Text
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category, sortOrder])
+  @@map("faqs")
+}
+
+model Coupon {
+  id         String     @id @default(cuid())
+  code       String     @unique
+  type       CouponType
+  value      Decimal    @db.Decimal(12, 2)
+  expiryDate DateTime?
+  usageLimit Int?
+  usedCount  Int        @default(0)
+  isActive   Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@map("coupons")
+}
+
+model ShippingRule {
+  id                   String   @id @default(cuid())
+  name                 String   @default("Default")
+  pakistanCharge       Decimal  @default(0) @db.Decimal(12, 2)
+  internationalEnabled Boolean  @default(false)
+  internationalCharge  Decimal  @default(0) @db.Decimal(12, 2)
+  deliveryDaysMin      Int      @default(1)
+  deliveryDaysMax      Int      @default(5)
+  zones                Json     @default("[]")
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("shipping_rules")
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String   @db.Text
+  status    String   @default("unread")
+  reply     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("contact_messages")
+}
+
+model MediaLibrary {
+  id           String   @id @default(cuid())
+  url          String
+  publicId     String?
+  fileName     String
+  fileType     String
+  mimeType     String   @default("image/jpeg")
+  size         Int
+  width        Int?
+  height       Int?
+  folder       String?
+  uploadedById String?
+  uploadedBy   User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([fileType])
+  @@index([fileName])
+  @@index([createdAt])
+  @@map("media_library")
+}
+
+model SeoSetting {
+  id              String   @id @default(cuid())
+  page            String
+  slug            String?
+  metaTitle       String?
+  metaDescription String?
+  keywords        String[] @default([])
+  canonicalUrl    String?
+  ogImage         String?
+  productId       String?  @unique
+  product         Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  blogId          String?  @unique
+  blog            Blog?    @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([page, slug])
+  @@index([page])
+  @@map("seo_settings")
+}
+
+model WebsiteSettings {
+  id            String   @id @default(cuid())
+  siteName      String   @default("E Royal Mango")
+  logo          String?
+  favicon       String?
+  footerContent String?  @db.Text
+  contactPhone  String?
+  contactEmail  String?
+  whatsapp      String?
+  copyrightText String?
+  address       String?
+  socialLinks   Json     @default("[]")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("website_settings")
+}
+
+model PaymentSettings {
+  id               String   @id @default(cuid())
+  cashOnDelivery   Boolean  @default(true)
+  easyPaisa        Boolean  @default(false)
+  jazzCash         Boolean  @default(false)
+  bankTransfer     Boolean  @default(false)
+  easyPaisaAccount String?
+  jazzCashAccount  String?
+  bankDetails      String?  @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("payment_settings")
+}
+
+model EmailSettings {
+  id          String   @id @default(cuid())
+  smtpHost    String?
+  smtpPort    Int      @default(587)
+  smtpUser    String?
+  smtpPass    String?
+  senderEmail String?
+  senderName  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("email_settings")
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  subject   String?
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("email_templates")
+}
+
+model HomepageSection {
+  id        String              @id @default(cuid())
+  type      HomepageSectionType @unique
+  content   Json
+  isVisible Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@map("homepage_sections")
+}
