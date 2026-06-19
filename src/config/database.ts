@@ -1,7 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 
 export async function connectDatabase(): Promise<void> {
-  const timeoutMs = 15_000;
+  const timeoutMs = process.env.NODE_ENV === "production" ? 30_000 : 15_000;
   await Promise.race([
     prisma.$connect(),
     new Promise<never>((_, reject) =>

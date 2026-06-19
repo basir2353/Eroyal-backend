@@ -60,7 +60,8 @@ function isPlaceholderPassword(pass: string) {
     normalized === "your-email-password" ||
     normalized === "your-app-password" ||
     normalized === "your-password" ||
-    normalized === "changeme"
+    normalized === "changeme" ||
+    normalized === "replace_with_real_email_password"
   );
 }
 
@@ -152,7 +153,12 @@ export async function getEmailStatus(): Promise<EmailStatus> {
 
   try {
     const transporter = createTransporter(config);
-    await transporter.verify();
+    await Promise.race([
+      transporter.verify(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("SMTP verification timed out after 8s")), 8_000),
+      ),
+    ]);
 
     return {
       configured: true,

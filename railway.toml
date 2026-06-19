@@ -3,7 +3,8 @@ builder = "NIXPACKS"
 buildCommand = "npm run build"
 
 [deploy]
-startCommand = "npm run start:production"
+preDeployCommand = "npx prisma migrate deploy"
+startCommand = "node dist/index.js"
 healthcheckPath = "/health"
-healthcheckTimeout = 120
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

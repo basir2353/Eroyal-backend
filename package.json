@@ -7,7 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "prisma generate && tsc",
     "start": "node dist/index.js",
-    "start:production": "prisma migrate deploy && node dist/index.js",
+    "start:production": "node dist/index.js",
     "seed": "tsx prisma/seed.ts",
     "seed:blogs": "tsx prisma/seed-blogs.ts",
     "reset-admin": "tsx scripts/reset-admin.ts",
