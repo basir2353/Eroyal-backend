@@ -14,6 +14,23 @@ function toNumber(value: unknown): number | null {
   return Number.isFinite(num) ? num : null;
 }
 
+/** Max value for @db.Decimal(12, 2) columns. */
+export const MAX_DB_PRICE = 9_999_999_999.99;
+
+export function sanitizePrice(value: unknown, label = "Price"): number {
+  const num = toNumber(value);
+  if (num == null) {
+    throw new Error(`${label} must be a valid number`);
+  }
+  if (num < 0) {
+    throw new Error(`${label} cannot be negative`);
+  }
+  if (num > MAX_DB_PRICE) {
+    throw new Error(`${label} cannot exceed ${MAX_DB_PRICE.toLocaleString("en-PK")} PKR`);
+  }
+  return Math.round(num * 100) / 100;
+}
+
 function toDate(value: unknown): Date | null {
   if (value == null || value === "") return null;
   const date = value instanceof Date ? value : new Date(String(value));

@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { toProductStatus } from "../utils/serialize.js";
-import { normalizeOfferInput, applyOfferToWeightOptions } from "../utils/productOffer.js";
+import { normalizeOfferInput, applyOfferToWeightOptions, sanitizePrice } from "../utils/productOffer.js";
 
 async function resolveCategoryId(categoryId: string): Promise<string> {
   const id = String(categoryId).trim();
@@ -42,7 +42,7 @@ export const productRepository = {
       prisma.product.findMany({
         where,
         include: productInclude,
-        orderBy: { createdAt: sort.startsWith("-") ? "desc" : "asc" },
+        orderBy: { createdAt: sort === "asc" ? "asc" : "desc" },
         skip,
         take: limit,
       }),
@@ -67,7 +67,11 @@ export const productRepository = {
     const imageUrls = Array.isArray(images) ? (images as string[]) : [];
     const categoryId = await resolveCategoryId(String(rest.categoryId ?? category));
     const offer = normalizeOfferInput(rest);
-    const regularPrice = Number(rest.regularPrice);
+    const regularPrice = sanitizePrice(rest.regularPrice, "Regular price");
+    const salePrice =
+      offer.onSale && offer.salePrice != null
+        ? sanitizePrice(offer.salePrice, "Sale price")
+        : null;
     const weightOptions = applyOfferToWeightOptions(rest.weightOptions, offer.onSale);
     return prisma.$transaction(async (tx) => {
       const product = await tx.product.create({
@@ -78,7 +82,7 @@ export const productRepository = {
           fullDescription: String(fullDescription ?? description ?? ""),
           stock: Number(rest.stock ?? 0),
           regularPrice,
-          salePrice: offer.salePrice,
+          salePrice,
           featured: Boolean(isFeatured ?? rest.featured),
           mostLoved: Boolean(isMostLoved ?? rest.mostLoved),
           onSale: offer.onSale,
@@ -134,7 +138,9 @@ export const productRepository = {
       rest.regularPrice !== undefined;
 
     const mergedRegularPrice =
-      rest.regularPrice !== undefined ? Number(rest.regularPrice) : Number(existing.regularPrice);
+      rest.regularPrice !== undefined
+        ? sanitizePrice(rest.regularPrice, "Regular price")
+        : Number(existing.regularPrice);
 
     const offer = offerFieldsTouched
       ? normalizeOfferInput({
@@ -173,10 +179,13 @@ export const productRepository = {
           ? { fullDescription: String(rest.fullDescription) }
           : {}),
         ...(rest.stock !== undefined ? { stock: Number(rest.stock) } : {}),
-        ...(rest.regularPrice !== undefined ? { regularPrice: Number(rest.regularPrice) } : {}),
+        ...(rest.regularPrice !== undefined ? { regularPrice: sanitizePrice(rest.regularPrice, "Regular price") } : {}),
         ...(offer
           ? {
-              salePrice: offer.salePrice,
+              salePrice:
+                offer.onSale && offer.salePrice != null
+                  ? sanitizePrice(offer.salePrice, "Sale price")
+                  : null,
               onSale: offer.onSale,
               saleBadge: offer.saleBadge,
               discountPercent: offer.discountPercent,

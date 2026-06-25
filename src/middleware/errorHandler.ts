@@ -12,7 +12,10 @@ export function errorHandler(
 
   if (
     err.message === "Invalid category selected" ||
-    err.message === "Category is required"
+    err.message === "Category is required" ||
+    err.message.startsWith("Regular price") ||
+    err.message.startsWith("Sale price") ||
+    err.message.startsWith("Price ")
   ) {
     return sendError(res, err.message, 400);
   }
