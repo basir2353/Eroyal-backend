@@ -4,6 +4,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { UPLOADS_DIR } from "./config/paths.js";
 import { env } from "./config/env.js";
+import { getCorsOrigins, isCorsOriginAllowed } from "./config/cors.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import routes from "./routes/index.js";
 import { getEmailStatus } from "./services/email.service.js";
@@ -17,12 +18,21 @@ export function createApp() {
       crossOriginResourcePolicy: { policy: "cross-origin" },
     }),
   );
+  const corsOrigins = getCorsOrigins();
   app.use(
     cors({
-      origin:
-        env.nodeEnv === "production"
-          ? [env.frontendUrl, env.adminUrl]
-          : true,
+      origin(origin, callback) {
+        if (env.nodeEnv !== "production") {
+          callback(null, true);
+          return;
+        }
+        if (!origin || isCorsOriginAllowed(origin)) {
+          callback(null, true);
+          return;
+        }
+        console.warn("CORS blocked origin:", origin, "allowed:", corsOrigins);
+        callback(null, false);
+      },
       credentials: true,
     }),
   );
