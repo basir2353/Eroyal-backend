@@ -37,9 +37,10 @@ export function getCorsOrigins(): string[] {
   const defaults = [
     ...withWwwVariants(env.frontendUrl),
     ...withWwwVariants(env.adminUrl),
-    "https://eroyalmango.vercel.app",
-    "https://www.eroyalmango.com",
     "https://eroyalmango.com",
+    "https://www.eroyalmango.com",
+    "https://admin.eroyalmango.com",
+    "https://eroyalmango.vercel.app",
     "https://eroyal-admin.vercel.app",
   ];
 
