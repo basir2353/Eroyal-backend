@@ -97,6 +97,47 @@ export function normalizeOfferInput(data: Record<string, unknown>) {
 
 type WeightOptionRow = { weight?: string; price?: number; salePrice?: number };
 
+export function isValidWeightOptions(raw: unknown): boolean {
+  if (!Array.isArray(raw) || raw.length === 0) return false;
+  const weights = raw
+    .filter((item) => item && typeof item === "object" && "weight" in item)
+    .map((item) => String((item as WeightOptionRow).weight).toLowerCase());
+  return weights.includes("5kg") && weights.includes("10kg");
+}
+
+/** Default 5kg / 10kg tiers when admin does not configure weight options. */
+export function buildDefaultWeightOptions(
+  regularPrice: number,
+  salePrice: number | null,
+  onSale: boolean,
+): WeightOptionRow[] {
+  const regular = sanitizePrice(regularPrice, "Regular price");
+  const fiveKgRegular = Math.max(1, Math.round(regular * 0.6));
+  const fiveKgSale =
+    onSale && salePrice != null ? sanitizePrice(salePrice, "Sale price") : fiveKgRegular;
+
+  return [
+    {
+      weight: "5kg",
+      price: fiveKgRegular,
+      ...(onSale && salePrice != null ? { salePrice: fiveKgSale } : {}),
+    },
+    { weight: "10kg", price: regular },
+  ];
+}
+
+export function ensureWeightOptions(
+  raw: unknown,
+  regularPrice: number,
+  salePrice: number | null,
+  onSale: boolean,
+): WeightOptionRow[] {
+  if (isValidWeightOptions(raw)) {
+    return raw as WeightOptionRow[];
+  }
+  return buildDefaultWeightOptions(regularPrice, salePrice, onSale);
+}
+
 export function stripWeightOptionSalePrices(weightOptions: unknown): unknown {
   if (!Array.isArray(weightOptions)) return weightOptions;
   return weightOptions.map((option) => {
@@ -132,6 +173,15 @@ export function applyEffectiveOffer<T extends Record<string, unknown> & OfferFie
   );
 
   product.onSale = active;
+  const regularPrice = sanitizePrice(product.regularPrice, "Regular price");
+  const salePrice =
+    active && product.salePrice != null
+      ? sanitizePrice(product.salePrice, "Sale price")
+      : null;
+  product.weightOptions = applyOfferToWeightOptions(
+    ensureWeightOptions(product.weightOptions, regularPrice, salePrice, active),
+    active,
+  );
   if (!active) {
     product.saleBadge = null;
     product.discountPercent = null;

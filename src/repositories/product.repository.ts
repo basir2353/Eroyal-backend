@@ -1,7 +1,12 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { toProductStatus } from "../utils/serialize.js";
-import { normalizeOfferInput, applyOfferToWeightOptions, sanitizePrice } from "../utils/productOffer.js";
+import {
+  normalizeOfferInput,
+  applyOfferToWeightOptions,
+  ensureWeightOptions,
+  sanitizePrice,
+} from "../utils/productOffer.js";
 
 async function resolveCategoryId(categoryId: string): Promise<string> {
   const id = String(categoryId).trim();
@@ -72,7 +77,13 @@ export const productRepository = {
       offer.onSale && offer.salePrice != null
         ? sanitizePrice(offer.salePrice, "Sale price")
         : null;
-    const weightOptions = applyOfferToWeightOptions(rest.weightOptions, offer.onSale);
+    const ensuredWeightOptions = ensureWeightOptions(
+      rest.weightOptions,
+      regularPrice,
+      offer.onSale && salePrice != null ? salePrice : null,
+      offer.onSale,
+    );
+    const weightOptions = applyOfferToWeightOptions(ensuredWeightOptions, offer.onSale);
     return prisma.$transaction(async (tx) => {
       const product = await tx.product.create({
         data: {
@@ -164,9 +175,25 @@ export const productRepository = {
         })
       : null;
 
-    const nextWeightOptions = offer
-      ? applyOfferToWeightOptions(rest.weightOptions ?? existing.weightOptions, offer.onSale)
-      : undefined;
+    const existingRegular = sanitizePrice(existing.regularPrice, "Regular price");
+    const nextRegular =
+      rest.regularPrice !== undefined
+        ? sanitizePrice(rest.regularPrice, "Regular price")
+        : existingRegular;
+    const nextOnSale = offer?.onSale ?? Boolean(existing.onSale);
+    const nextSalePrice =
+      offer && offer.onSale && offer.salePrice != null
+        ? sanitizePrice(offer.salePrice, "Sale price")
+        : nextOnSale && existing.salePrice != null
+          ? sanitizePrice(existing.salePrice, "Sale price")
+          : null;
+    const ensuredWeightOptions = ensureWeightOptions(
+      rest.weightOptions !== undefined ? rest.weightOptions : existing.weightOptions,
+      nextRegular,
+      nextSalePrice,
+      nextOnSale,
+    );
+    const nextWeightOptions = applyOfferToWeightOptions(ensuredWeightOptions, nextOnSale);
 
     return prisma.$transaction(async (tx) => {
       const updateData: Prisma.ProductUpdateInput = {
@@ -191,9 +218,9 @@ export const productRepository = {
               discountPercent: offer.discountPercent,
               offerStartDate: offer.offerStartDate,
               offerEndDate: offer.offerEndDate,
-              weightOptions: nextWeightOptions as Prisma.InputJsonValue,
             }
           : {}),
+        weightOptions: nextWeightOptions as Prisma.InputJsonValue,
         ...(isFeatured !== undefined ? { featured: Boolean(isFeatured) } : {}),
         ...(isMostLoved !== undefined ? { mostLoved: Boolean(isMostLoved) } : {}),
         ...(categoryId ? { categoryId } : {}),
