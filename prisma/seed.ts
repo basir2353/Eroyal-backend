@@ -218,9 +218,18 @@ async function main() {
         "E Royal Mango delivers Pakistan's finest export-quality mangoes — handpicked from Multan's legendary orchards with royal care.",
       copyrightText: "Copyright © 2025 | E Royal Mango",
       socialLinks: [
-        { platform: "instagram", url: "https://instagram.com/eroyalmango" },
-        { platform: "facebook", url: "https://facebook.com/eroyalmango" },
-        { platform: "youtube", url: "https://youtube.com/eroyalmango" },
+        {
+          platform: "facebook",
+          url: "https://www.facebook.com/share/1JxSFsbRoM/",
+        },
+        {
+          platform: "instagram",
+          url: "https://www.instagram.com/eroyalmango?utm_source=qr&igsh=MTV0bDE4MDc3ZnEzaA==",
+        },
+        {
+          platform: "whatsapp",
+          url: "https://whatsapp.com/channel/0029Vb7vuPXFHWq07oF9Yf3N",
+        },
       ],
       announcementBarEnabled: true,
       announcementMessages: [
