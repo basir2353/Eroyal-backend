@@ -1,9 +1,18 @@
-import type { CouponType } from "@prisma/client";
+import type { CouponType, Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { DEFAULT_ANNOUNCEMENT_MESSAGES } from "../constants/defaultAnnouncements.js";
 
 async function getSingletonWebsite() {
   let row = await prisma.websiteSettings.findFirst();
-  if (!row) row = await prisma.websiteSettings.create({ data: {} });
+  if (!row) {
+    row = await prisma.websiteSettings.create({
+      data: {
+        announcementBarEnabled: true,
+        announcementMessages:
+          DEFAULT_ANNOUNCEMENT_MESSAGES as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
   return row;
 }
 

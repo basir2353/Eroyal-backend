@@ -1,3 +1,8 @@
+import {
+  DEFAULT_ANNOUNCEMENT_MESSAGES,
+  defaultAnnouncementTexts,
+} from "../constants/defaultAnnouncements.js";
+
 export type AnnouncementMessage = {
   id: string;
   text: string;
@@ -40,8 +45,21 @@ export function normalizeAnnouncementMessages(raw: unknown): AnnouncementMessage
     .map((item, index) => ({ ...item, sortOrder: index }));
 }
 
+function resolvePublicAnnouncementTexts(
+  row: Record<string, unknown>,
+  messages: AnnouncementMessage[],
+): string[] {
+  const enabled = row.announcementBarEnabled !== false;
+  const activeTexts = messages.filter((item) => item.isActive).map((item) => item.text);
+
+  if (!enabled) return [];
+  if (activeTexts.length > 0) return activeTexts;
+  return defaultAnnouncementTexts();
+}
+
 export function mapWebsiteForPublic(row: Record<string, unknown>) {
   const messages = normalizeAnnouncementMessages(row.announcementMessages);
+  const announcementMessages = resolvePublicAnnouncementTexts(row, messages);
 
   return {
     siteName: row.siteName,
@@ -55,14 +73,19 @@ export function mapWebsiteForPublic(row: Record<string, unknown>) {
     copyrightText: row.copyrightText,
     socialLinks: row.socialLinks,
     announcementBarEnabled: row.announcementBarEnabled !== false,
-    announcementMessages: messages.filter((item) => item.isActive).map((item) => item.text),
+    announcementMessages,
   };
 }
 
 export function mapWebsiteForAdmin(row: Record<string, unknown>) {
+  const messages = normalizeAnnouncementMessages(row.announcementMessages);
+
   return {
     ...row,
     announcementBarEnabled: row.announcementBarEnabled !== false,
-    announcementMessages: normalizeAnnouncementMessages(row.announcementMessages),
+    announcementMessages:
+      messages.length > 0 ? messages : DEFAULT_ANNOUNCEMENT_MESSAGES,
   };
 }
+
+export { DEFAULT_ANNOUNCEMENT_MESSAGES };

@@ -1,6 +1,7 @@
 import { PrismaClient, HomepageSectionType, type Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { ROLE_PERMISSIONS } from "../src/types/roles.js";
+import { DEFAULT_ANNOUNCEMENT_MESSAGES } from "../src/constants/defaultAnnouncements.js";
 import {
   ABOUT_CONTENT,
   BENEFITS_CARDS,
@@ -232,26 +233,7 @@ async function main() {
         },
       ],
       announcementBarEnabled: true,
-      announcementMessages: [
-        {
-          id: "cod",
-          text: "💵 CASH ON DELIVERY — PAY AT YOUR DOORSTEP, ZERO RISK",
-          isActive: true,
-          sortOrder: 0,
-        },
-        {
-          id: "fresh-mangoes",
-          text: "🥭 FRESH EXPORT-QUALITY MANGOES — ORDER NOW",
-          isActive: true,
-          sortOrder: 1,
-        },
-        {
-          id: "bank-transfer",
-          text: "🏦 DIRECT BANK TRANSFER AVAILABLE — UPLOAD YOUR RECEIPT AFTER PAYMENT",
-          isActive: true,
-          sortOrder: 2,
-        },
-      ],
+      announcementMessages: DEFAULT_ANNOUNCEMENT_MESSAGES,
     },
   });
 
