@@ -12,6 +12,7 @@ import {
   MANGO_PRODUCTS,
   TESTIMONIALS,
 } from "./seed-data.js";
+import { DEFAULT_CAROUSEL_SLIDES } from "../src/constants/carousel.js";
 
 const prisma = new PrismaClient();
 
@@ -40,6 +41,7 @@ const HOMEPAGE_DEFAULTS: Record<HomepageSectionType, Record<string, unknown>> = 
       { value: "Multan", label: "Direct Origin" },
       { value: "24h", label: "Fresh Harvest" },
     ],
+    slides: DEFAULT_CAROUSEL_SLIDES,
   },
   BENEFITS: {
     sectionTitle: "Why Choose E Royal Mango",
@@ -220,17 +222,62 @@ async function main() {
         { platform: "facebook", url: "https://facebook.com/eroyalmango" },
         { platform: "youtube", url: "https://youtube.com/eroyalmango" },
       ],
+      announcementBarEnabled: true,
+      announcementMessages: [
+        {
+          id: "cod",
+          text: "💵 CASH ON DELIVERY — PAY AT YOUR DOORSTEP, ZERO RISK",
+          isActive: true,
+          sortOrder: 0,
+        },
+        {
+          id: "fresh-mangoes",
+          text: "🥭 FRESH EXPORT-QUALITY MANGOES — ORDER NOW",
+          isActive: true,
+          sortOrder: 1,
+        },
+        {
+          id: "bank-transfer",
+          text: "🏦 DIRECT BANK TRANSFER AVAILABLE — UPLOAD YOUR RECEIPT AFTER PAYMENT",
+          isActive: true,
+          sortOrder: 2,
+        },
+      ],
     },
   });
 
   if (!(await prisma.paymentSettings.findFirst())) {
-    await prisma.paymentSettings.create({ data: { cashOnDelivery: true } });
+    await prisma.paymentSettings.create({
+      data: {
+        cashOnDelivery: true,
+        jazzCash: true,
+        easyPaisa: true,
+        bankTransfer: true,
+        jazzCashAccount: "03073970850",
+        easyPaisaAccount: "03154749309",
+        bankName: "MCB",
+        bankAccountTitle: "BABER SOHAIL",
+        bankAccountNumber: "1436665541000808",
+        bankIban: "PK42MUCB1436665541000808",
+        paymentInstructions:
+          "Transfer the exact order total and upload your payment screenshot or receipt below.",
+      },
+    });
   }
   if (!(await prisma.shippingRule.findFirst())) {
     await prisma.shippingRule.create({ data: { name: "Default", pakistanCharge: 0, zones: [] } });
   }
   if (!(await prisma.emailSettings.findFirst())) {
     await prisma.emailSettings.create({ data: { senderName: "E Royal Mango" } });
+  }
+  if (!(await prisma.smsSettings.findFirst())) {
+    await prisma.smsSettings.create({
+      data: {
+        enabled: false,
+        channel: "auto",
+        orderPlacedEnabled: true,
+      },
+    });
   }
 
   for (const t of [

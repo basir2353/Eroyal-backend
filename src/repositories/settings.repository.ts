@@ -27,6 +27,12 @@ async function getSingletonEmail() {
   return row;
 }
 
+async function getSingletonSms() {
+  let row = await prisma.smsSettings.findFirst();
+  if (!row) row = await prisma.smsSettings.create({ data: {} });
+  return row;
+}
+
 export const settingsRepository = {
   getWebsite: getSingletonWebsite,
   updateWebsite: async (data: Record<string, unknown>) => {
@@ -102,6 +108,12 @@ export const settingsRepository = {
     return this.getEmail();
   },
 
+  getSms: getSingletonSms,
+  updateSms: async (data: Record<string, unknown>) => {
+    const row = await getSingletonSms();
+    return prisma.smsSettings.update({ where: { id: row.id }, data: data as never });
+  },
+
   listSeo() {
     return prisma.seoSetting.findMany({ orderBy: { page: "asc" } });
   },
@@ -128,6 +140,23 @@ export function mapPaymentForApi(row: Record<string, unknown>) {
     ...row,
     easyPaisaDetails: row.easyPaisaAccount,
     jazzCashDetails: row.jazzCashAccount,
+  };
+}
+
+export function mapPaymentForPublic(row: Record<string, unknown>) {
+  return {
+    cashOnDelivery: row.cashOnDelivery,
+    easyPaisa: row.easyPaisa,
+    jazzCash: row.jazzCash,
+    bankTransfer: row.bankTransfer,
+    jazzCashAccount: row.jazzCashAccount,
+    easyPaisaAccount: row.easyPaisaAccount,
+    bankName: row.bankName,
+    bankAccountTitle: row.bankAccountTitle,
+    bankAccountNumber: row.bankAccountNumber,
+    bankIban: row.bankIban,
+    bankDetails: row.bankDetails,
+    paymentInstructions: row.paymentInstructions,
   };
 }
 

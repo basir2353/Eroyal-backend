@@ -34,4 +34,10 @@ export const env = {
     from: process.env.EMAIL_FROM ?? "noreply@eroyalmango.com",
     fromName: process.env.EMAIL_FROM_NAME ?? "E Royal Mango",
   },
+  twilio: {
+    accountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+    authToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+    phoneNumber: process.env.TWILIO_PHONE_NUMBER ?? "",
+    whatsAppFrom: process.env.TWILIO_WHATSAPP_FROM ?? "",
+  },
 };

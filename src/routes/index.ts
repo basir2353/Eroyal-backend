@@ -7,6 +7,7 @@ import * as product from "../controllers/product.controller.js";
 import * as settings from "../controllers/settings.controller.js";
 import orderRoutes from "./order.routes.js";
 import emailRoutes from "./email.routes.js";
+import smsRoutes from "./sms.routes.js";
 import * as customer from "../controllers/customer.controller.js";
 import * as category from "../controllers/category.controller.js";
 import * as content from "../controllers/content.controller.js";
@@ -37,6 +38,7 @@ router.get("/public/testimonials", content.listPublicTestimonials);
 router.get("/public/categories", category.listPublicCategories);
 router.use(orderRoutes);
 router.use(emailRoutes);
+router.use(smsRoutes);
 router.post("/public/contact", contact.createPublicContact);
 
 // Auth
@@ -100,11 +102,14 @@ router.patch("/contact/:id", authenticate, authorize("edit"), contact.updateCont
 router.get("/media", authenticate, authorize("view"), mediaCtrl.listMedia);
 router.post("/media", authenticate, authorize("create"), mediaCtrl.upload.single("file"), mediaCtrl.uploadMedia);
 router.post("/media/url", authenticate, authorize("create"), mediaCtrl.createMediaUrl);
+router.post("/media/import-url", authenticate, authorize("create"), mediaCtrl.importMediaFromUrl);
 router.delete("/media/:id", authenticate, authorize("delete"), mediaCtrl.deleteMedia);
 
 // Settings
 router.get("/settings/website", authenticate, authorize("view"), settings.getWebsiteSettings);
 router.put("/settings/website", authenticate, authorize("edit"), settings.updateWebsiteSettings);
+router.get("/settings/announcements", authenticate, authorize("view"), settings.getAnnouncementSettings);
+router.put("/settings/announcements", authenticate, authorize("edit"), settings.updateAnnouncementSettings);
 router.get("/settings/payments", authenticate, authorize("view"), settings.getPaymentSettings);
 router.put("/settings/payments", authenticate, authorize("edit"), settings.updatePaymentSettings);
 router.get("/settings/shipping", authenticate, authorize("view"), settings.getShippingSettings);

@@ -219,6 +219,8 @@ model Order {
   total          Decimal         @db.Decimal(12, 2)
   paymentMethod  String          @default("cash_on_delivery")
   paymentStatus  PaymentStatus   @default(PENDING)
+  paymentReceiptUrl        String?
+  paymentReceiptUploadedAt DateTime?
   orderStatus    OrderStatus     @default(PENDING)
   trackingNumber String?
   couponCode     String?
@@ -228,6 +230,8 @@ model Order {
   timeline                  OrderTimeline[]
   confirmationEmailSentAt   DateTime?
   confirmationEmailError    String?
+  orderSmsSentAt            DateTime?
+  orderSmsError             String?
   createdAt                 DateTime        @default(now())
   updatedAt                 DateTime        @updatedAt
 
@@ -423,6 +427,8 @@ model WebsiteSettings {
   copyrightText String?
   address       String?
   socialLinks   Json     @default("[]")
+  announcementBarEnabled Boolean @default(true)
+  announcementMessages   Json    @default("[]")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -437,7 +443,12 @@ model PaymentSettings {
   bankTransfer     Boolean  @default(false)
   easyPaisaAccount String?
   jazzCashAccount  String?
+  bankName         String?
+  bankAccountTitle String?
+  bankAccountNumber String?
+  bankIban         String?
   bankDetails      String?  @db.Text
+  paymentInstructions String? @db.Text
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -467,6 +478,18 @@ model EmailTemplate {
   updatedAt DateTime @updatedAt
 
   @@map("email_templates")
+}
+
+model SmsSettings {
+  id                  String   @id @default(cuid())
+  enabled             Boolean  @default(false)
+  channel             String   @default("sms")
+  orderPlacedEnabled  Boolean  @default(true)
+  orderPlacedTemplate String   @default("Thank you for your order, {customerName}! Your order {orderNumber} for Rs{total} has been received. - E Royal Mango") @db.Text
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("sms_settings")
 }
 
 model HomepageSection {

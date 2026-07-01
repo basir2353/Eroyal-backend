@@ -5,8 +5,10 @@ import {
   mapCouponForApi,
   mapCouponInput,
   mapPaymentForApi,
+  mapPaymentForPublic,
   settingsRepository,
 } from "../repositories/settings.repository.js";
+import { mapWebsiteForAdmin, mapWebsiteForPublic } from "../utils/announcements.js";
 import { getEmailStatus } from "../services/email.service.js";
 import { prisma } from "../lib/prisma.js";
 import { sendSuccess } from "../utils/apiResponse.js";
@@ -14,12 +16,44 @@ import { paramId } from "../utils/params.js";
 import { serialize, serializeMany } from "../utils/serialize.js";
 
 export async function getWebsiteSettings(_req: AuthRequest, res: Response) {
-  return sendSuccess(res, serialize(await settingsRepository.getWebsite()));
+  return sendSuccess(
+    res,
+    mapWebsiteForAdmin(serialize(await settingsRepository.getWebsite()) as Record<string, unknown>),
+  );
 }
 
 export async function updateWebsiteSettings(req: AuthRequest, res: Response) {
   const doc = await settingsRepository.updateWebsite(req.body);
-  return sendSuccess(res, serialize(doc), "Website settings updated");
+  return sendSuccess(
+    res,
+    mapWebsiteForAdmin(serialize(doc) as Record<string, unknown>),
+    "Website settings updated",
+  );
+}
+
+export async function getAnnouncementSettings(_req: AuthRequest, res: Response) {
+  const website = serialize(await settingsRepository.getWebsite()) as Record<string, unknown>;
+  const mapped = mapWebsiteForAdmin(website);
+  return sendSuccess(res, {
+    announcementBarEnabled: mapped.announcementBarEnabled,
+    announcementMessages: mapped.announcementMessages,
+  });
+}
+
+export async function updateAnnouncementSettings(req: AuthRequest, res: Response) {
+  const doc = await settingsRepository.updateWebsite({
+    announcementBarEnabled: req.body?.announcementBarEnabled,
+    announcementMessages: req.body?.announcementMessages,
+  });
+  const mapped = mapWebsiteForAdmin(serialize(doc) as Record<string, unknown>);
+  return sendSuccess(
+    res,
+    {
+      announcementBarEnabled: mapped.announcementBarEnabled,
+      announcementMessages: mapped.announcementMessages,
+    },
+    "Announcement bar updated",
+  );
 }
 
 export async function getPaymentSettings(_req: AuthRequest, res: Response) {
@@ -123,8 +157,8 @@ export async function getPublicSettings(_req: AuthRequest, res: Response) {
     settingsRepository.getShipping(),
   ]);
   return sendSuccess(res, {
-    website: serialize(website),
-    payments: mapPaymentForApi(serialize(payments) as Record<string, unknown>),
+    website: mapWebsiteForPublic(serialize(website) as Record<string, unknown>),
+    payments: mapPaymentForPublic(serialize(payments) as Record<string, unknown>),
     shipping: serialize(shipping),
   });
 }

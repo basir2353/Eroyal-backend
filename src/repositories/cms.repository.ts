@@ -1,5 +1,11 @@
 import type { HomepageSectionType, Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import {
+  DEFAULT_CAROUSEL_SLIDES,
+  getPublicHeroSlides,
+  normalizeCarouselSlides,
+  sanitizeCarouselSlides,
+} from "../constants/carousel.js";
 
 export const CMS_SECTION_KEYS = {
   hero: "HERO",
@@ -30,6 +36,7 @@ const DEFAULT_CONTENT: Record<HomepageSectionType, Record<string, unknown>> = {
       { value: "Multan", label: "Direct Origin" },
       { value: "24h", label: "Fresh Harvest" },
     ],
+    slides: DEFAULT_CAROUSEL_SLIDES,
   },
   BENEFITS: {
     sectionTitle: "Why Choose E Royal Mango",
@@ -82,11 +89,17 @@ export const cmsRepository = {
   async updateByKey(key: CmsSectionKey, body: Record<string, unknown>) {
     const type = CMS_SECTION_KEYS[key] as HomepageSectionType;
     const existing = await this.getOrCreate(type);
-    const { content: contentPatch, isVisible, ...rest } = body;
+    const { content: contentPatch, isVisible, slides, ...rest } = body;
     const mergedContent = {
       ...(existing.content as Record<string, unknown>),
       ...((contentPatch as Record<string, unknown>) ?? rest),
     };
+
+    if (key === "hero" && slides !== undefined) {
+      mergedContent.slides = sanitizeCarouselSlides(slides);
+    } else if (key === "hero" && Array.isArray(mergedContent.slides)) {
+      mergedContent.slides = sanitizeCarouselSlides(mergedContent.slides);
+    }
 
     return prisma.homepageSection.update({
       where: { type },
@@ -97,9 +110,17 @@ export const cmsRepository = {
     });
   },
 
-  toApiSection(section: { id: string; content: unknown; isVisible: boolean; updatedAt: Date }) {
+  toApiSection(
+    section: { id: string; content: unknown; isVisible: boolean; updatedAt: Date },
+    type?: HomepageSectionType,
+  ) {
+    const content = { ...((section.content as Record<string, unknown>) ?? {}) };
+    if (type === "HERO") {
+      content.slides = sanitizeCarouselSlides(content.slides);
+    }
+
     return {
-      ...((section.content as Record<string, unknown>) ?? {}),
+      ...content,
       id: section.id,
       _id: section.id,
       isVisible: section.isVisible,
@@ -112,7 +133,18 @@ export const cmsRepository = {
       Object.entries(CMS_SECTION_KEYS).map(async ([key, type]) => {
         const section = await this.getOrCreate(type as HomepageSectionType);
         if (!section.isVisible) return null;
-        return [key, this.toApiSection(section)] as const;
+        const api = this.toApiSection(section, type as HomepageSectionType);
+        if (key === "hero") {
+          const content = (section.content as Record<string, unknown>) ?? {};
+          return [
+            key,
+            {
+              ...api,
+              slides: getPublicHeroSlides(content.slides),
+            },
+          ] as const;
+        }
+        return [key, api] as const;
       }),
     );
     return Object.fromEntries(entries.filter(Boolean) as [string, ReturnType<typeof this.toApiSection>][]);

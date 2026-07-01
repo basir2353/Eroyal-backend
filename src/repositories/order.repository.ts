@@ -197,6 +197,125 @@ export const orderRepository = {
     });
   },
 
+  markOrderSmsSent(orderId: string) {
+    return prisma.order.update({
+      where: { id: orderId },
+      data: {
+        orderSmsSentAt: new Date(),
+        orderSmsError: null,
+      },
+    });
+  },
+
+  markOrderSmsFailed(orderId: string, errorMessage: string) {
+    return prisma.order.update({
+      where: { id: orderId },
+      data: {
+        orderSmsError: errorMessage.slice(0, 500),
+      },
+    });
+  },
+
+  async attachPaymentReceipt(orderId: string, receiptUrl: string) {
+    return prisma.$transaction(async (tx) => {
+      await tx.orderTimeline.create({
+        data: {
+          orderId,
+          status: "PENDING",
+          note: "Payment receipt uploaded by customer",
+        },
+      });
+      return tx.order.update({
+        where: { id: orderId },
+        data: {
+          paymentReceiptUrl: receiptUrl,
+          paymentReceiptUploadedAt: new Date(),
+        },
+        include: { customer: true, items: true, timeline: { orderBy: { createdAt: "asc" } } },
+      });
+    });
+  },
+
+  async listPaymentVerifications(
+    filter: "pending_review" | "awaiting_receipt" | "completed",
+    skip: number,
+    limit: number,
+  ) {
+    const where: Prisma.OrderWhereInput = {
+      paymentMethod: "direct_bank_transfer",
+    };
+
+    if (filter === "pending_review") {
+      where.paymentReceiptUrl = { not: null };
+      where.paymentStatus = "PENDING";
+    } else if (filter === "awaiting_receipt") {
+      where.paymentReceiptUrl = null;
+      where.paymentStatus = "PENDING";
+    } else {
+      where.paymentStatus = "PAID";
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.order.findMany({
+        where,
+        include: {
+          customer: { select: { id: true, name: true, email: true, phone: true } },
+          items: true,
+          timeline: { orderBy: { createdAt: "asc" } },
+        },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.order.count({ where }),
+    ]);
+
+    return { items, total };
+  },
+
+  async markPaymentComplete(id: string, note?: string) {
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) throw new Error("Not found");
+    if (order.paymentMethod !== "direct_bank_transfer") {
+      throw new Error("This order is not a bank transfer payment.");
+    }
+    if (!order.paymentReceiptUrl) {
+      throw new Error("No payment receipt has been uploaded for this order.");
+    }
+    if (order.paymentStatus === "PAID") {
+      throw new Error("Payment is already marked as complete.");
+    }
+
+    return prisma.$transaction(async (tx) => {
+      await tx.orderTimeline.create({
+        data: {
+          orderId: id,
+          status: "PROCESSING",
+          note: note?.trim() || "Payment verified and marked complete by admin",
+        },
+      });
+      return tx.order.update({
+        where: { id },
+        data: {
+          paymentStatus: "PAID",
+          orderStatus: order.orderStatus === "PENDING" ? "PROCESSING" : order.orderStatus,
+        },
+        include: {
+          customer: true,
+          items: true,
+          timeline: { orderBy: { createdAt: "asc" } },
+        },
+      });
+    });
+  },
+
+  findByIdAndEmail(id: string, email: string) {
+    return prisma.order.findFirst({
+      where: { id, customerInfo: { path: ["email"], equals: email.trim().toLowerCase() } },
+      include: { customer: true, items: true, timeline: { orderBy: { createdAt: "asc" } } },
+    });
+  },
+
   async updateStatus(id: string, status: string, note?: string, trackingNumber?: string) {
     const orderStatus = toOrderStatus(status);
     return prisma.$transaction(async (tx) => {

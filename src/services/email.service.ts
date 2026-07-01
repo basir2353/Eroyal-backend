@@ -7,6 +7,12 @@ import {
   buildOrderConfirmationText,
   type OrderConfirmationTemplateData,
 } from "../templates/orderConfirmationEmail.js";
+import {
+  buildPaymentCompleteHtml,
+  buildPaymentCompleteSubject,
+  buildPaymentCompleteText,
+  type PaymentCompleteTemplateData,
+} from "../templates/paymentCompleteEmail.js";
 import { logger } from "../utils/logger.js";
 
 export type SendMailInput = {
@@ -230,6 +236,17 @@ export async function sendOrderConfirmationEmail(
   const subject = buildOrderConfirmationSubject(data);
   const html = buildOrderConfirmationHtml(data);
   const text = buildOrderConfirmationText(data);
+
+  return sendMail({ to, subject, html, text });
+}
+
+export async function sendPaymentCompleteEmail(
+  to: string,
+  data: PaymentCompleteTemplateData,
+) {
+  const subject = buildPaymentCompleteSubject(data);
+  const html = buildPaymentCompleteHtml(data);
+  const text = buildPaymentCompleteText(data);
 
   return sendMail({ to, subject, html, text });
 }
